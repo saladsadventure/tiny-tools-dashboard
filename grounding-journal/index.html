@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grounding Journal</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app">
+    <section class="hero card">
+      <p class="eyebrow">Grounding Journal</p>
+      <h1>A soft place to return to myself.</h1>
+    </section>
+
+    <section class="layout">
+      <form id="journalForm" class="card form-card">
+        <div class="date-row">
+          <div>
+            <p class="eyebrow">Today</p>
+            <h2>Gentle Check-In</h2>
+          </div>
+          <input type="date" id="entryDate" required />
+        </div>
+
+        <label for="gentleSentence">今日一句 gentle sentence</label>
+        <input id="gentleSentence" type="text" placeholder="Today, I only need to be gentle with myself." />
+
+        <label>今日感恩三件事</label>
+        <input class="gratitude" type="text" placeholder="一件小事..." />
+        <input class="gratitude" type="text" placeholder="一個人 / 一句說話..." />
+        <input class="gratitude" type="text" placeholder="一個自己做得不錯的地方..." />
+
+        <label for="survived">今日我撐過了什麼</label>
+        <textarea id="survived" rows="4" placeholder="我雖然難過，但仍然有照顧自己..."></textarea>
+
+        <label>Healing tracker</label>
+        <div class="checks">
+          <label><input type="checkbox" value="飲水" />飲水</label>
+          <label><input type="checkbox" value="有好好食飯" />有好好食飯</label>
+          <label><input type="checkbox" value="郁動身體" />郁動身體</label>
+          <label><input type="checkbox" value="少一點自責" />少一點自責</label>
+          <label><input type="checkbox" value="有聯絡人" />有聯絡人</label>
+          <label><input type="checkbox" value="有休息" />有休息</label>
+        </div>
+
+        <label for="futureMe">Dear future me...</label>
+        <textarea id="futureMe" rows="4" placeholder="親愛的未來的我，請記得..."></textarea>
+
+        <button type="submit">Save Today</button>
+      </form>
+
+      <aside class="side">
+        <section class="card">
+          <p class="eyebrow">Gentle Reminders</p>
+          <div class="reminders">
+            <p>Healing is not linear.</p>
+            <p>低谷唔代表你失敗。</p>
+            <p>Surviving today already counts.</p>
+          </div>
+        </section>
+
+        <section class="card archive-card">
+          <div class="archive-title">
+            <p class="eyebrow">Archive</p>
+            <button id="clearBtn" class="ghost" type="button">Clear all</button>
+          </div>
+          <div id="entries" class="entries"></div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
