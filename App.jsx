@@ -128,6 +128,19 @@ const currencies = [
   { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$' },
 ];
 
+const fallbackRatesToGBP = {
+  GBP: 1,
+  HKD: 10.2,
+  USD: 1.32,
+  EUR: 1.14,
+  JPY: 200,
+  CNY: 9.4,
+  TWD: 40.5,
+  CAD: 1.84,
+  AUD: 2.02,
+  SGD: 1.7,
+};
+
 function CurrencyTool() {
   const [amount, setAmount] = useStoredState(`${STORAGE}:currency-amount`, '100');
   const [from, setFrom] = useStoredState(`${STORAGE}:currency-from`, 'GBP');
@@ -136,11 +149,19 @@ function CurrencyTool() {
   const [date, setDate] = useState('');
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
+  const [source, setSource] = useState('');
 
   const numericAmount = Number(amount);
   const converted = rate && Number.isFinite(numericAmount) ? numericAmount * rate : null;
   const fromCurrency = currencies.find(c => c.code === from) || currencies[0];
   const toCurrency = currencies.find(c => c.code === to) || currencies[1];
+
+  function setFallbackRate() {
+    const fallbackRate = fallbackRatesToGBP[to] / fallbackRatesToGBP[from];
+    setRate(fallbackRate);
+    setDate(new Date().toISOString().slice(0, 10));
+    setSource('fallback estimate');
+  }
 
   async function fetchRate() {
     if (!Number.isFinite(numericAmount) || numericAmount < 0) {
@@ -151,6 +172,7 @@ function CurrencyTool() {
       setRate(1);
       setDate(new Date().toISOString().slice(0, 10));
       setStatus('done');
+      setSource('same currency');
       setError('');
       return;
     }
@@ -158,17 +180,19 @@ function CurrencyTool() {
     setStatus('loading');
     setError('');
     try {
-      const response = await fetch(`https://api.frankfurter.app/latest?from=${from}&to=${to}`);
+      const response = await fetch(`https://open.er-api.com/v6/latest/${from}`);
       if (!response.ok) throw new Error('Rate request failed');
       const data = await response.json();
       const nextRate = data?.rates?.[to];
-      if (!nextRate) throw new Error('Currency pair unavailable');
+      if (!nextRate || data?.result === 'error') throw new Error('Currency pair unavailable');
       setRate(nextRate);
-      setDate(data?.date || new Date().toISOString().slice(0, 10));
+      setDate(data?.time_last_update_utc ? new Date(data.time_last_update_utc).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10));
+      setSource('live rate');
       setStatus('done');
     } catch {
-      setError('Could not fetch live rate. Please try again later.');
-      setStatus('error');
+      setFallbackRate();
+      setError('Live rate is temporarily unavailable, so this is an estimate. Please check your bank or broker before making a transaction.');
+      setStatus('fallback');
     }
   }
 
@@ -211,14 +235,14 @@ function CurrencyTool() {
       <p className="kicker">Converted amount</p>
       <p className="result currency-result">{toCurrency.symbol}{formattedConverted}</p>
       <p className="note">{amount || 0} {fromCurrency.code} = {formattedConverted} {toCurrency.code}</p>
-      <p className="note">Rate: 1 {fromCurrency.code} = {formattedRate} {toCurrency.code}{date ? ` · Updated ${date}` : ''}</p>
+      <p className="note">Rate: 1 {fromCurrency.code} = {formattedRate} {toCurrency.code}{date ? ` · Updated ${date}` : ''}{source ? ` · ${source}` : ''}</p>
       {error ? <p className="error-text">{error}</p> : null}
       <div className="actions">
         <button className="btn earth" onClick={fetchRate} disabled={status === 'loading'}><RefreshCw size={18}/> {status === 'loading' ? 'Updating...' : 'Update rate'}</button>
         <CopyButton value={converted === null ? '' : `${amount} ${from} = ${formattedConverted} ${to}`} />
       </div>
     </div>
-    <p className="note">Uses live exchange rates from a free public rate API. Good for quick estimates; check your bank or broker before making a transaction.</p>
+    <p className="note">Uses a live public exchange-rate API where available. Fallback estimates are for rough planning only.</p>
   </div>;
 }
 
@@ -254,7 +278,7 @@ export default function App() {
           {selected.component}
         </section>
       </section>
-      <p className="footer">Tiny Tools Dashboard · MVP v2 · Installable PWA-ready website</p>
+      <p className="footer">Tiny Tools Dashboard · MVP v2.1 · Installable PWA-ready website</p>
     </div>
   </main>;
 }
