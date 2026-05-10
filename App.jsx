@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import QRCode from 'qrcode';
-import { Check, Copy, Download, Link2, Pause, Play, QrCode, RotateCcw, Sparkles, Timer } from 'lucide-react';
+import { Check, Copy, Download, Link2, Pause, Play, QrCode, RefreshCw, RotateCcw, Sparkles, Timer, WalletCards } from 'lucide-react';
 
 const STORAGE = 'tiny-tools-dashboard';
 
@@ -115,10 +115,118 @@ function QRTool() {
   </div>;
 }
 
+const currencies = [
+  { code: 'GBP', name: 'British Pound', symbol: '£' },
+  { code: 'HKD', name: 'Hong Kong Dollar', symbol: 'HK$' },
+  { code: 'USD', name: 'US Dollar', symbol: '$' },
+  { code: 'EUR', name: 'Euro', symbol: '€' },
+  { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
+  { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
+  { code: 'TWD', name: 'Taiwan Dollar', symbol: 'NT$' },
+  { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
+  { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
+  { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$' },
+];
+
+function CurrencyTool() {
+  const [amount, setAmount] = useStoredState(`${STORAGE}:currency-amount`, '100');
+  const [from, setFrom] = useStoredState(`${STORAGE}:currency-from`, 'GBP');
+  const [to, setTo] = useStoredState(`${STORAGE}:currency-to`, 'HKD');
+  const [rate, setRate] = useState(null);
+  const [date, setDate] = useState('');
+  const [status, setStatus] = useState('idle');
+  const [error, setError] = useState('');
+
+  const numericAmount = Number(amount);
+  const converted = rate && Number.isFinite(numericAmount) ? numericAmount * rate : null;
+  const fromCurrency = currencies.find(c => c.code === from) || currencies[0];
+  const toCurrency = currencies.find(c => c.code === to) || currencies[1];
+
+  async function fetchRate() {
+    if (!Number.isFinite(numericAmount) || numericAmount < 0) {
+      setError('Please enter a valid amount.');
+      return;
+    }
+    if (from === to) {
+      setRate(1);
+      setDate(new Date().toISOString().slice(0, 10));
+      setStatus('done');
+      setError('');
+      return;
+    }
+
+    setStatus('loading');
+    setError('');
+    try {
+      const response = await fetch(`https://api.frankfurter.app/latest?from=${from}&to=${to}`);
+      if (!response.ok) throw new Error('Rate request failed');
+      const data = await response.json();
+      const nextRate = data?.rates?.[to];
+      if (!nextRate) throw new Error('Currency pair unavailable');
+      setRate(nextRate);
+      setDate(data?.date || new Date().toISOString().slice(0, 10));
+      setStatus('done');
+    } catch {
+      setError('Could not fetch live rate. Please try again later.');
+      setStatus('error');
+    }
+  }
+
+  useEffect(() => {
+    fetchRate();
+  }, [from, to]);
+
+  function swapCurrencies() {
+    setFrom(to);
+    setTo(from);
+  }
+
+  const formattedConverted = converted === null ? '—' : new Intl.NumberFormat('en-GB', { maximumFractionDigits: 2 }).format(converted);
+  const formattedRate = rate ? new Intl.NumberFormat('en-GB', { maximumFractionDigits: 6 }).format(rate) : '—';
+
+  return <div className="currency-tool">
+    <div className="currency-grid">
+      <div>
+        <label>Amount</label>
+        <input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal" placeholder="100" />
+      </div>
+      <div>
+        <label>From</label>
+        <select value={from} onChange={e => setFrom(e.target.value)}>
+          {currencies.map(currency => <option key={currency.code} value={currency.code}>{currency.code} · {currency.name}</option>)}
+        </select>
+      </div>
+      <div className="swap-cell">
+        <button className="btn secondary swap-btn" onClick={swapCurrencies} title="Swap currencies"><RefreshCw size={18}/> Swap</button>
+      </div>
+      <div>
+        <label>To</label>
+        <select value={to} onChange={e => setTo(e.target.value)}>
+          {currencies.map(currency => <option key={currency.code} value={currency.code}>{currency.code} · {currency.name}</option>)}
+        </select>
+      </div>
+    </div>
+
+    <div className="output currency-output">
+      <p className="kicker">Converted amount</p>
+      <p className="result currency-result">{toCurrency.symbol}{formattedConverted}</p>
+      <p className="note">{amount || 0} {fromCurrency.code} = {formattedConverted} {toCurrency.code}</p>
+      <p className="note">Rate: 1 {fromCurrency.code} = {formattedRate} {toCurrency.code}{date ? ` · Updated ${date}` : ''}</p>
+      {error ? <p className="error-text">{error}</p> : null}
+      <div className="actions">
+        <button className="btn earth" onClick={fetchRate} disabled={status === 'loading'}><RefreshCw size={18}/> {status === 'loading' ? 'Updating...' : 'Update rate'}</button>
+        <CopyButton value={converted === null ? '' : `${amount} ${from} = ${formattedConverted} ${to}`} />
+      </div>
+    </div>
+    <p className="note">Uses live exchange rates from a free public rate API. Good for quick estimates; check your bank or broker before making a transaction.</p>
+  </div>;
+}
+
 const tools = [
   { id: 'short', title: 'Short Link', description: 'Paste a long URL and generate a copyable short link.', icon: Link2, component: <ShortLinkTool /> },
   { id: 'timer', title: 'Pomodoro Timer', description: '25 minutes focus, 5 minutes rest, with start, pause and reset.', icon: Timer, component: <PomodoroTool /> },
   { id: 'qr', title: 'QR Code Generator', description: 'Enter text or a URL and download a scannable QR code.', icon: QrCode, component: <QRTool /> },
+  { id: 'currency', title: 'Currency Converter', description: 'Convert major currencies with live exchange rates.', icon: WalletCards, component: <CurrencyTool /> },
 ];
 
 export default function App() {
@@ -130,7 +238,7 @@ export default function App() {
       <section className="hero">
         <div className="badge"><Sparkles size={18}/> Personal Tools Dashboard</div>
         <h1>All your daily tiny tools in one calm place.</h1>
-        <p>Start with three useful tools: short links, Pomodoro focus timer and QR code generator. Built as a simple MVP and ready to grow.</p>
+        <p>Start with useful tools: short links, Pomodoro focus timer, QR code generator and currency converter. Built as a simple MVP and ready to grow.</p>
       </section>
       <section className="layout">
         <aside className="sidebar">
@@ -146,7 +254,7 @@ export default function App() {
           {selected.component}
         </section>
       </section>
-      <p className="footer">Tiny Tools Dashboard · MVP v1 · Installable PWA-ready website</p>
+      <p className="footer">Tiny Tools Dashboard · MVP v2 · Installable PWA-ready website</p>
     </div>
   </main>;
 }
