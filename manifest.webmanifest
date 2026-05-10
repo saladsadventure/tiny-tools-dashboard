@@ -1,0 +1,16 @@
+{
+  "name": "Tiny Tools Dashboard",
+  "short_name": "Tiny Tools",
+  "description": "Short link, Pomodoro timer and QR code generator in one dashboard.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f1e5",
+  "theme_color": "#7c4a25",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
